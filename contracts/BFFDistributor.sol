@@ -11,20 +11,27 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 contract BFFDistributorStorage {
-    address public BFFtoken;
+    // Merkle root for verification
     bytes32 public merkleRoot;
+    // BFFToken to be the underlying award
     IERC20Upgradeable public BFFToken;
 }
 
 contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
-
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeMath for uint256;
 
+    /** @dev constructor
+     *  @param token Set the token to work as reward
+     */
     constructor(IERC20Upgradeable token) {
         BFFToken = token;
     }
 
+    /** @dev Set new weekly merkleroot for verification and allocate weekly reward
+     *  @param _merkleRoot New merkle root to update
+     *  @param totalAllocation New amount of weekly reward
+     */
     function newMerkleAllocations(
         bytes32 _merkleRoot, 
         uint256 totalAllocation
@@ -38,6 +45,11 @@ contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
         emit MerkleAdded(_merkleRoot, totalAllocation);
     }
 
+    /** @dev Verify if a address is eligible to claim a specific amount
+     * @param claimer Address to be verified
+     * @param amount Amount the address can claim
+     * @param merkleProof Merkle proof used to verify the claimer address and amount of reward token
+     */
     function verifyClaim(
         address claimer, 
         uint256 amount, 
@@ -51,6 +63,11 @@ contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
         return _verify(claimer, amount, merkleProof);
     }
 
+    /** @dev Distribute amount of reward token to the claimer address
+     * @param claimer Address to be verified
+     * @param amount Amount the address can claim
+     * @param merkleProof Merkle proof used to verify the claimer address and amount of reward token
+     */
     function claimTokens(
         address claimer, 
         uint256 amount, 
@@ -63,6 +80,11 @@ contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
         _distribute(claimer, amount);
     }
 
+    /** @dev Internal verification for function verifyClaim(address claimer, uint256 amount, bytes32[] memory merkleProof)
+     * @param claimer Address to be verified
+     * @param amount Amount the address can claim
+     * @param merkleProof Merkle proof used to verify the claimer address and amount of reward token
+     */
     function _verify(
         address claimer, 
         uint256 amount, 
@@ -73,13 +95,14 @@ contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
         returns(bool valid)
     {
         bytes32 leaf = keccak256(abi.encodePacked(claimer, amount));
-        console.log("This is leaf: ");
-        console.logBytes32(leaf);
-        console.log("This is root: ");
-        console.logBytes32(merkleRoot);
         return MerkleProof.verify(merkleProof, merkleRoot, leaf);
     }
 
+    /** @dev Internal claim activation for function claimTokens(address claimer, uint256 amount, bytes32[] memory merkleProof)
+     * @param claimer Address to be verified
+     * @param amount Amount the address can claim
+     * @param merkleProof Merkle proof used to verify the claimer address and amount of reward token
+     */
     function _claim(
         address claimer, 
         uint256 amount, 
@@ -91,6 +114,10 @@ contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
         emit Claimed(claimer, amount);
     }
 
+    /** @dev Internal reward distribution for function function _claim(address claimer, uint256 amount, bytes32[] memory merkleProof)
+     * @param claimer Address to be verified
+     * @param amount Amount the address can claim
+     */
     function _distribute(
         address claimer, 
         uint256 amount
@@ -105,7 +132,14 @@ contract BFFDistributor is BFFDistributorStorage, IBFFDistributor, Ownable {
         }
     }
 
-    function withdrawTokens(address to, uint256 amount) 
+    /** @dev Withdraw remaining reward in the distributor contract
+     * @param to Address to transfer the reward token in the distributor contract
+     * @param amount Amount of reward token to withdraw
+     */
+    function withdrawTokens(
+        address to, 
+        uint256 amount
+    ) 
         external
         override
         onlyOwner
