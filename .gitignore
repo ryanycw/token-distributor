@@ -1,5 +1,9 @@
+*.json
+*.csv
+
 cache/
-artifact/
+artifacts/
+.openzeppelin/
 # Logs
 logs
 *.log
